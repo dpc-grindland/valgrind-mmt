@@ -29,6 +29,8 @@
 #include "pub_tool_libcbase.h"
 #include "pub_tool_libcproc.h"
 #include "pub_tool_libcassert.h"
+#include "nvrm_ioctl.h"
+#include "nvrm_mthd.h"
 
 #include <sys/select.h>
 
@@ -165,16 +167,27 @@ static void dumpmem(const char *s, Addr addr, UInt size)
 	}
 	else
 	{
-		size = size / 4;
-
-		for (i = 0; i < size; ++i)
-		{
-			if (idx + 11 >= 4095)
-				break;
-			VG_(sprintf) (line + idx, "0x%08x ", ((UInt *) addr)[i]);
-			idx += 11;
-		}
-		VG_(message) (Vg_DebugMsg, "%s%s\n", s, line);
+        if(size%4==0){
+            size = size / 4;
+            for (i = 0; i < size; ++i)
+            {
+                if (idx + 11 >= 4095)
+                    break;
+                VG_(sprintf) (line + idx, "0x%08x ", ((UInt *) addr)[i]);
+                idx += 11;
+            }
+            VG_(message) (Vg_DebugMsg, "%s%s\n", s, line);
+        }
+        else{
+            for (i = 0; i < size; ++i)
+            {
+                if (idx + 5 >= 4095)
+                    break;
+                VG_(sprintf) (line + idx, "0x%02x ", ((char *) addr)[i]);
+                idx += 5;
+            }
+            VG_(message) (Vg_DebugMsg, "%s%s\n", s, line);
+        }
 	}
 }
 
@@ -367,6 +380,148 @@ static struct object_type *find_objtype(UInt id)
 	return NULL;
 }
 
+void mmt_nv_dump_call(char * s, uint32_t mthd, char *in, uint32_t in_size);
+void mmt_nv_dump_call(char * s, uint32_t mthd, char *in, uint32_t in_size){
+    dumpmem(s, (Addr)in, in_size);
+    switch(mthd){
+//     case 0x10000002:{
+//         // word 2 is an address
+//         // what is there?
+//         UInt *addr2 = (*(UInt **) (&data[4]));
+//         dumpmem("in2 ", addr2[2], 0x3c);
+//         break;
+//     }
+    case NVRM_MTHD_DEVICE_UNK00800201:{
+        struct nvrm_mthd_device_unk00800201 *x = in;
+        if(x->ptr){
+            dumpmem("UNK00800201 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint32_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_DEVICE_UNK00801102:{
+        struct nvrm_mthd_device_unk00801102 *x = in;
+        if(x->ptr){
+            dumpmem("UNK00801102 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint8_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_DEVICE_UNK00801401:{
+        struct nvrm_mthd_device_unk00801401 *x = in;
+        if(x->ptr){
+            dumpmem("UNK00801401 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint8_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_DEVICE_UNK0080170d:{
+        struct nvrm_mthd_device_unk0080170d *x = in;
+        if(x->ptr1){
+            dumpmem("UNK0080170d ptr1 ", (Addr)x->ptr1, x->cnt * sizeof(uint32_t));
+        }
+        if(x->ptr2){
+            dumpmem("UNK0080170d ptr2 ", (Addr)x->ptr2, x->cnt * sizeof(uint32_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_UNK20801301:{
+        struct nvrm_mthd_subdevice_unk20801301 *x = in;
+        if(x->ptr){
+            dumpmem("UNK20801301 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint64_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_UNK20800101:{
+        struct nvrm_mthd_device_unk20800101 *x = in;
+        if(x->ptr){
+            dumpmem("UNK20800101 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint64_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_GET_FIFO_ENGINES:{
+        struct nvrm_mthd_subdevice_get_fifo_engines *x = in;
+        if(x->ptr){
+            dumpmem("SUBDEVICE_GET_FIFO_ENGINES ptr ", (Addr)x->ptr, x->cnt * sizeof(uint32_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_GET_FIFO_CLASSES:{
+        struct nvrm_mthd_subdevice_get_fifo_classes *x = in;
+        if(x->ptr){
+            dumpmem("SUBDEVICE_GET_FIFO_CLASSES ptr ", (Addr)x->ptr, x->cnt * sizeof(uint32_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_GET_FIFO_JOINABLE_ENGINES:{
+        struct nvrm_mthd_subdevice_get_fifo_joinable_engines *x = in;
+        if(x->res){
+            dumpmem("SUBDEVICE_GET_FIFO_JOINABLE_ENGINES ptr ", (Addr)x->res, x->cnt * sizeof(uint32_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_GET_UUID:{
+        struct nvrm_mthd_subdevice_get_uuid *x = in;
+        if(x->uuid){
+            dumpmem("SUBDEVICE_GET_UUID ptr ", (Addr)x->uuid, x->uuid_len * sizeof(uint8_t));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_UNK20801201:{
+        struct nvrm_mthd_subdevice_unk20801201 *x = in;
+        if(x->ptr){
+            dumpmem("UNK20801201 ptr ", (Addr)x->ptr, x->cnt*sizeof(struct nvrm_mthd_key_value));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_BUS_GET_PARAMS:{
+        struct nvrm_mthd_subdevice_bus_get_params *x = in;
+        if(x->ptr){
+            dumpmem("SUBDEVICE_BUS_GET_PARAMS ptr ", (Addr)x->ptr, x->cnt*sizeof(struct nvrm_mthd_key_value));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_UNK20800122:{
+        struct nvrm_mthd_subdevice_unk20800122    *x   = in;
+        struct nvrm_mthd_subdevice_unk20800122_tx *txs = x->ptr;
+        if (mmt_binary_output)
+        {
+            mmt_bin_write_1('n');
+            mmt_bin_write_1('1');
+            mmt_bin_write_4(x->cnt);
+            mmt_bin_write_8((ULong)txs);
+            mmt_bin_write_buffer((UChar *)txs, x->cnt * 8 * 4);
+            mmt_bin_end();
+        }
+        else
+        {
+            dumpmem("UNK20800122: ", (Addr)x, sizeof(*x));
+            uint32_t k;
+            for (k = 0; k < x->cnt; ++k)
+                dumpmem("UNK20800122 tx: ", (Addr)&txs[k], x->cnt * sizeof(*txs));
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_UNK2080100a:{
+        struct nvrm_mthd_subdevice_unk2080100a *x = in;
+        if(x->ptr){
+            dumpmem("UNK2080100a ptr ", (Addr)x->ptr, x->cnt*16);
+        }
+        break;
+    }
+    case NVRM_MTHD_SUBDEVICE_UNK20802002:{
+        struct nvrm_mthd_subdevice_unk20802002 *x = in;
+        if(x->ptr){
+            dumpmem("UNK20802002 ptr ", (Addr)x->ptr, 72);
+        }
+        break;
+    }
+    // TODO:
+    // case NVRM_MTHD_SUBDEVICE_UNK20800512:
+    // case NVRM_MTHD_SUBDEVICE_UNK20800522:
+    default:{
+        break;
+    }
+    } // switch
+}
+
 void mmt_nv_ioctl_pre(UWord *args)
 {
 	int fd = args[0];
@@ -478,48 +633,7 @@ void mmt_nv_ioctl_pre(UWord *args)
 			}
 			else
 				VG_(message) (Vg_DebugMsg, "call method 0x%08x:0x%08x\n", data[1], data[2]);
-
-			dumpmem("in ", mmt_2x4to8(data[5], data[4]), mmt_2x4to8(data[7], data[6]));
-			// 0x10000002
-			// word 2 is an address
-			// what is there?
-			if (data[2] == 0x10000002)
-			{
-				UInt *addr2 = (*(UInt **) (&data[4]));
-				dumpmem("in2 ", addr2[2], 0x3c);
-			}
-			else if (data[2] == 0x20800122)
-			{
-				UInt k;
-				UInt *in = (UInt *)mmt_2x4to8(data[5], data[4]);
-				UInt cnt = in[5];
-				UInt *tx = (UInt *)mmt_2x4to8(in[7], in[6]);
-				if (mmt_binary_output)
-				{
-					mmt_bin_write_1('n');
-					mmt_bin_write_1('1');
-					mmt_bin_write_4(cnt);
-					mmt_bin_write_8((ULong)tx);
-					mmt_bin_write_buffer((UChar *)tx, cnt * 8 * 4);
-					mmt_bin_end();
-				}
-				else
-				{
-					VG_(message) (Vg_DebugMsg, "<==(%u at %p)\n", cnt, tx);
-
-					for (k = 0; k < cnt; ++k)
-						VG_(message) (Vg_DebugMsg, "REQUEST: DIR=%x MMIO=%x VALUE=%08x MASK=%08x UNK=%08x,%08x,%08x,%08x\n",
-									tx[k * 8 + 0],
-									tx[k * 8 + 3],
-									tx[k * 8 + 5],
-									tx[k * 8 + 7],
-									tx[k * 8 + 1],
-									tx[k * 8 + 2],
-									tx[k * 8 + 4],
-									tx[k * 8 + 6]);
-				}
-			}
-
+            mmt_nv_dump_call("in ",data[2],(char*)mmt_2x4to8(data[5], data[4]), mmt_2x4to8(data[7], data[6]));
 			break;
 
 		case 0xc040464d:
@@ -809,44 +923,7 @@ void mmt_nv_ioctl_post(UWord *args)
 			// 0x2a read stuff from video ram?
 			//   i 3 pre  2a: c1d00046 c1d00046 02000014 00000000 be88a948 00000000 00000080 00000000
 		case 0xc020462a:
-			dumpmem("out ", mmt_2x4to8(data[5], data[4]), mmt_2x4to8(data[7], data[6]));
-
-			if (data[2] == 0x10000002)
-			{
-				UInt *addr2 = (*(UInt **) (&data[4]));
-				dumpmem("out2 ", addr2[2], 0x3c);
-			}
-			else if (data[2] == 0x20800122)
-			{
-				UInt *out = (UInt *)mmt_2x4to8(data[5], data[4]);
-				UInt cnt = out[5];
-				UInt *tx = (UInt *)mmt_2x4to8(out[7], out[6]);
-				UInt k;
-
-				if (mmt_binary_output)
-				{
-					mmt_bin_write_1('n');
-					mmt_bin_write_1('1');
-					mmt_bin_write_4(cnt);
-					mmt_bin_write_8((ULong)tx);
-					mmt_bin_write_buffer((UChar *)tx, cnt * 8 * 4);
-					mmt_bin_end();
-				}
-				else
-				{
-					for (k = 0; k < cnt; ++k)
-						VG_(message) (Vg_DebugMsg, "RETURND: DIR=%x MMIO=%x VALUE=%08x MASK=%08x UNK=%08x,%08x,%08x,%08x\n",
-									tx[k * 8 + 0],
-									tx[k * 8 + 3],
-									tx[k * 8 + 5],
-									tx[k * 8 + 7],
-									tx[k * 8 + 1],
-									tx[k * 8 + 2],
-									tx[k * 8 + 4],
-									tx[k * 8 + 6]);
-				}
-			}
-
+            mmt_nv_dump_call("out ",data[2],(char*)mmt_2x4to8(data[5], data[4]), mmt_2x4to8(data[7], data[6]));
 			break;
 			// 0x37 read configuration parameter
 		case 0xc0204638:
