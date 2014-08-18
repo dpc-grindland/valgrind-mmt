@@ -513,6 +513,13 @@ void mmt_nv_dump_call(char * s, uint32_t mthd, char *in, uint32_t in_size){
         }
         break;
     }
+    case NVRM_MTHD_DEVICE_UNK20802016:{
+        struct nvrm_mthd_subdevice_unk20802016 *x = in;
+        if(x->ptr){
+            dumpmem("UNK20802016 ptr ", (Addr)x->ptr, x->cnt*16);
+        }
+        break;
+    }
     // TODO:
     // case NVRM_MTHD_SUBDEVICE_UNK20800512:
     // case NVRM_MTHD_SUBDEVICE_UNK20800522:
@@ -579,6 +586,25 @@ void mmt_nv_ioctl_pre(UWord *args)
 			VG_(message) (Vg_DebugMsg, "%s\n", line);
 		}
 	}
+    else if(id==0x30000001)
+    {
+        VG_(message) (Vg_DebugMsg, "pre_ioctl: fd:%d,           (full:0x%x)\n", fd, id);
+    }
+    else if(id==0x00000001)
+    {
+        char line[4096];
+        int idx = 0;
+        VG_(sprintf) (line, "pre_ioctl: fd:%d,           (full:0x%x) data: ", fd, id);
+        idx = VG_(strlen(line));
+        for (i = 0; i < 24 / 4; ++i)
+        {
+            if (idx + 11 >= 4095)
+                break;
+            VG_(sprintf) (line + idx, "0x%08x ", data[i]);
+            idx += 11;
+        }
+        VG_(message) (Vg_DebugMsg, "%s\n", line);
+    }
 	else
 		VG_(message)(Vg_DebugMsg, "pre_ioctl, fd: %d, wrong id:0x%x\n", fd, id);
 
@@ -793,6 +819,25 @@ void mmt_nv_ioctl_post(UWord *args)
 			VG_(message) (Vg_DebugMsg, "%s\n", line);
 		}
 	}
+    else if(id==0x30000001)
+    {
+        VG_(message) (Vg_DebugMsg, "post_ioctl: fd:%d,           (full:0x%x)\n", fd, id);
+    }
+    else if(id==0x00000001)
+    {
+        char line[4096];
+        int idx = 0;
+        VG_(sprintf) (line, "post_ioctl: fd:%d,           (full:0x%x) data: ", fd, id);
+        idx = VG_(strlen(line));
+        for (i = 0; i < 24 / 4; ++i)
+        {
+            if (idx + 11 >= 4095)
+                break;
+            VG_(sprintf) (line + idx, "0x%08x ", data[i]);
+            idx += 11;
+        }
+        VG_(message) (Vg_DebugMsg, "%s\n", line);
+    }
 	else
 		VG_(message)(Vg_DebugMsg, "post_ioctl, fd: %d, wrong id:0x%x\n", fd, id);
 

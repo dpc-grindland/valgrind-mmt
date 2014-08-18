@@ -143,6 +143,17 @@ struct nvrm_mthd_device_unk0080170d {
 
 /* subdevice */
 
+struct nvrm_mthd_subdevice_unk20802016 {
+    uint32_t unk00;  // 0x00000400
+    uint32_t unk04;  // 0x00000000 
+    uint32_t unk08;  // 0x00000000
+    uint32_t unk0c;  // 0x00000000
+    uint32_t cnt;    // 0x00000003
+    uint32_t unk14;  // 0x00000000 
+    uint64_t ptr;    // cnt * 16
+};
+#define NVRM_MTHD_DEVICE_UNK20802016 0x20802016
+
 struct nvrm_mthd_subdevice_unk20801301 {
     uint32_t cnt;   // 0x7
     uint32_t _pad;
