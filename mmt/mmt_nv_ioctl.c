@@ -273,7 +273,7 @@ static struct object_type {
 
 	{0x0004, "NV_PTIMER", 0},
 
-	{0x0041, "NV_CONTEXT", 0},
+	{0x0041, "NV_CONTEXT", 1},
 
 	{0x502d, "NV50_2D", 0},
 	{0x902d, "NVC0_2D", 0},
@@ -422,10 +422,10 @@ void mmt_nv_dump_call(char * s, uint32_t mthd, char *in, uint32_t in_size){
         }
         break;
     }
-    case NVRM_MTHD_SUBDEVICE_UNK20801301:{
-        struct nvrm_mthd_subdevice_unk20801301 *x = in;
+    case NVRM_MTHD_SUBDEVICE_FB_GET_PARAMS:{
+        struct nvrm_mthd_subdevice_fb_get_params *x = in;
         if(x->ptr){
-            dumpmem("UNK20801301 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint64_t));
+            dumpmem("SUBDEVICE_FB_GET_PARAMS ptr ", (Addr)x->ptr, x->cnt * sizeof(uint64_t));
         }
         break;
     }
@@ -663,6 +663,7 @@ void mmt_nv_ioctl_pre(UWord *args)
 			break;
 
 		case 0xc040464d:
+		case 0xc048464d:
 			if (mmt_binary_output)
 			{
 				mmt_bin_write_1('n');
@@ -860,7 +861,18 @@ void mmt_nv_ioctl_post(UWord *args)
 		case 0xc0204623:
 			dumpmem("out", data[4], 0x3C);
 			break;
-
+		case 0xc040464d:
+		case 0xc048464d:
+			if (mmt_binary_output)
+			{
+				mmt_bin_write_1('n');
+				mmt_bin_write_1('4');
+				mmt_bin_write_str(*(char **) (&data[6]));
+				mmt_bin_end();
+			}
+			else
+				VG_(message) (Vg_DebugMsg, "out %s\n", *(char **) (&data[6]));
+			break;
 		case 0xc030464e:		// Allocate map for existing object
 			obj1 = data[1];
 			obj2 = data[2];
@@ -1045,6 +1057,23 @@ void mmt_nv_ioctl_post(UWord *args)
 			else
 				VG_(message) (Vg_DebugMsg, "bind 0x%08x 0x%08x\n", data[1], data[2]);
 			break;
+		case 0xc020462b: // create object returns some arguments
+		{
+			struct object_type *objtype;
+//			const char *name = "???";
+			addr = data[3];
+			objtype = find_objtype(addr);
+//			if (objtype && objtype->name)
+//				name = objtype->name;
+			if (data[4])
+			{
+				if (objtype)
+					dumpmem("out ", mmt_2x4to8(data[5], data[4]), objtype->cargs * 4);
+				else
+					dumpmem("out ", mmt_2x4to8(data[5], data[4]), 0x40);
+			}
+			break;
+		}
 		//case 0xc01c4634:
 			//    dumpmem("out", data[4], 0x40);
 			//    break;
