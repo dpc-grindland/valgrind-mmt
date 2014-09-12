@@ -45,22 +45,31 @@ struct nvrm_mthd_context_unk00000101 {
 };
 #define NVRM_MTHD_CONTEXT_UNK00000101 0x00000101
 
-/* looks exactly like LIST_DEVICES, wtf? */
+struct nvrm_mthd_context_unk00000127 {
+    uint32_t gpu_id[2]; // in: with 2 GPUs, called twice with both GPUs in both orders
+    uint32_t unk08[30];
+    uint32_t unk80; // in: 0x2
+    uint32_t unk84; // out: 0x3
+};
+#define NVRM_MTHD_CONTEXT_UNK00000127 0x00000127
+
+/* looks similar to LIST_DEVICES, doesn't always return all of them though. */
 struct nvrm_mthd_context_unk00000201 {
     uint32_t gpu_id[32];
 };
 #define NVRM_MTHD_CONTEXT_UNK00000201 0x00000201
 
+/* called after 0x201, gpu_id is the same as 0x201 */
 struct nvrm_mthd_context_unk00000202 {
-    uint32_t gpu_id;
-    uint32_t unk04;         /* out */
-    uint32_t unk08;
+    uint32_t gpu_id;    // may be -1
+    uint32_t unk04;         /* out [0x1|0x21 (GT 680)] */
+    uint32_t unk08;         /* out [0x1|0x0] */
     uint32_t unk0c;
     uint32_t unk10;
     uint32_t unk14;
-    uint32_t unk18;
-    uint32_t unk1c_gpu_id;  /* out */
-    uint32_t unk20;
+    uint32_t unk18;         /* out [0x40|0x0] */
+    uint32_t unk1c_gpu_id;  /* out same as gpu_id */
+    uint32_t unk20;         /* out [0x0|0x1] */
     uint32_t unk24;
 };
 #define NVRM_MTHD_CONTEXT_UNK00000202 0x00000202
@@ -77,7 +86,7 @@ struct nvrm_mthd_context_list_devices {
 
 struct nvrm_mthd_context_enable_device {
     uint32_t gpu_id;
-    uint32_t unk04[32];
+    uint32_t unk04[32]; // [0] == 0xffffffff (in)
 };
 #define NVRM_MTHD_CONTEXT_ENABLE_DEVICE 0x00000215
 
@@ -93,7 +102,7 @@ struct nvrm_mthd_device_unk00800201 {
     // called twice, first call returns cnt
     uint32_t cnt;   // in/out; (out if was zero)
     uint32_t unk04;
-    uint64_t ptr;   // cnt * uint32_t; NULL if cnt == 0
+    uint64_t ptr;   // cnt * uint32_t; NULL if cnt == 0; values < 0xffff
 };
 #define NVRM_MTHD_DEVICE_UNK00800201 0x00800201
 
@@ -143,14 +152,18 @@ struct nvrm_mthd_device_unk0080170d {
 
 /* subdevice */
 
+/* seen on GK110, related to unk2080100a in that it queries the same key twice */
 struct nvrm_mthd_subdevice_unk20802016 {
-    uint32_t unk00;  // 0x00000400
+    uint32_t unk00;  // 0x00000400 in
     uint32_t unk04;  // 0x00000000 
-    uint32_t unk08;  // 0x00000000
-    uint32_t unk0c;  // 0x00000000
-    uint32_t cnt;    // 0x00000003
+    uint32_t unk08;  // 0x00020064 0x00030064 out
+    uint32_t unk0c;  // 0x00000001 out
+    uint32_t cnt;    // 0x00000003 in
     uint32_t unk14;  // 0x00000000 
-    uint64_t ptr;    // cnt * 16
+    uint64_t ptr;    /* {uint32_t key_in; uint32_t value_out[3];} */
+    /* ptr values:
+     * 0x00010000 -> 0x00000001 0x001ab7d8 0x00000000
+     * 0x00000010 -> 0x00000001 0x002dd660 0x00000000 */
 };
 #define NVRM_MTHD_DEVICE_UNK20802016 0x20802016
 
@@ -164,8 +177,11 @@ struct nvrm_mthd_subdevice_unk20801301 {
 struct nvrm_mthd_device_unk20800101 {
     uint32_t cnt;   // accepts variable cnt
     uint32_t _pad;
-    uint64_t ptr;   // cnt * uint64_t
+    uint64_t ptr;   /* nvrm_mthd_key_value */
 };
+/* 0x11 -> 1
+ * 0x21 -> 0
+ * 0x22 -> 0 */
 #define NVRM_MTHD_SUBDEVICE_UNK20800101 0x20800101
 
 struct nvrm_mthd_subdevice_get_name {
@@ -173,6 +189,11 @@ struct nvrm_mthd_subdevice_get_name {
     char name[0x80];
 };
 #define NVRM_MTHD_SUBDEVICE_GET_NAME 0x20800110
+
+struct nvrm_mthd_subdevice_get_arch_name {
+    char name[0x40];
+};
+#define NVRM_MTHD_SUBDEVICE_GET_ARCH_NAME   0x20800111
 
 struct nvrm_mthd_subdevice_unk20800119 {
     uint32_t unk00;
@@ -280,6 +301,7 @@ struct nvrm_mthd_subdevice_unk20801201 {
     uint32_t _pad;
     uint64_t ptr; /* nvrm_mthd_key_value */
 };
+// 0x10 -> 0xffff8801, 0xffff8802 (temperature? changes rarely and unexpectedly)
 #define NVRM_MTHD_SUBDEVICE_UNK20801201 0x20801201
 
 struct nvrm_mthd_subdevice_unk20800122_tx {
@@ -306,7 +328,10 @@ struct nvrm_mthd_subdevice_unk20800122 {
 struct nvrm_mthd_subdevice_unk2080100a {
     uint32_t unk0;
     uint32_t cnt;  // 3
-    uint64_t ptr;  // cnt * 16
+    uint64_t ptr;  /* {uint32_t key_in; uint32_t value_out[3];} */
+    /* Key-value:
+     * 0x00000001 -> 0x00010000 0x00000001 0x00000032
+     * 0x00000004 -> 0x00000010 0x00000001 0x00000064 */
 };
 #define NVRM_MTHD_SUBDEVICE_UNK2080100a 0x2080100a
 
@@ -324,8 +349,10 @@ struct nvrm_mthd_subdevice_fb_get_params {
     uint32_t _pad;
     uint64_t ptr; /* nvrm_mthd_key_value */
 };
+
+#define NVRM_PARAM_SUBDEVICE_FB_UNK02       0x2 /* 0xc000 for nvf0 - shared memory per block? */
 #define NVRM_PARAM_SUBDEVICE_FB_BUS_WIDTH	11
-#define NVRM_PARAM_SUBDEVICE_FB_UNK13		13	/* 5 for NV50; 8 for NVCF and NVE4 */
+#define NVRM_PARAM_SUBDEVICE_FB_UNK13		13	/* 5 for NV50; 8 for NVCF and NVE4, 8 for NVF0 */
 #define NVRM_PARAM_SUBDEVICE_FB_UNK23		23	/* 0 */
 #define NVRM_PARAM_SUBDEVICE_FB_UNK24		24	/* 0 */
 #define NVRM_PARAM_SUBDEVICE_FB_PART_COUNT	25
@@ -362,9 +389,14 @@ struct nvrm_mthd_subdevice_bus_get_params {
     uint32_t _pad;
     uint64_t ptr; /* nvrm_mthd_key_value */
 };
+#define NVRM_PARAM_SUBDEVICE_BUS_UNK00      0x0     /* returns 3 */
+#define NVRM_PARAM_SUBDEVICE_BUS_UNK02      0x2     /* returns 0 */
+#define NVRM_PARAM_SUBDEVICE_BUS_UNK10      0x10    /* changes between devices */
+#define NVRM_PARAM_SUBDEVICE_BUS_UNK13      0x13    /* returns 0x007a7903 */
 #define NVRM_PARAM_SUBDEVICE_BUS_BUS_ID		29
 #define NVRM_PARAM_SUBDEVICE_BUS_DEV_ID		30
 #define NVRM_PARAM_SUBDEVICE_BUS_DOMAIN_ID	60
+#define NVRM_PARAM_SUBDEVICE_BUS_UNK3d      0x3d    /* changes between runs */
 #define NVRM_MTHD_SUBDEVICE_BUS_GET_PARAMS 0x20801802
 
 struct nvrm_mthd_subdevice_get_bus_info {
@@ -436,5 +468,12 @@ struct nvrm_mthd_unk85b6_unk85b60202 {
     uint8_t unk00;
 };
 #define NVRM_MTHD_UNK85B6_UNK85b60202 0x85b60202
+
+
+/* Params in create IOCTL */
+
+struct nvrm_create_nv_context {
+    uint32_t cid;
+}; /* possibly more */
 
 #endif

@@ -183,7 +183,7 @@ static void dumpmem(const char *s, Addr addr, UInt size)
             {
                 if (idx + 5 >= 4095)
                     break;
-                VG_(sprintf) (line + idx, "0x%02x ", ((char *) addr)[i]);
+                VG_(sprintf) (line + idx, "0x%02x ", ((unsigned char *) addr)[i]);
                 idx += 5;
             }
             VG_(message) (Vg_DebugMsg, "%s%s\n", s, line);
@@ -228,10 +228,12 @@ int mmt_nv_ioctl_post_mmap(UWord *args, SysRes res, int offset_unit)
 
 	if (!mmt_trace_nvidia_ioctls)
 		return 0;
-	if (!FD_ISSET(fd, &nvidia0_fds))
+	if (!FD_ISSET(fd, &nvidia0_fds)) {
+		VG_(message) (Vg_DebugMsg, "failed FD_ISSET\n");
 		return 0;
-
+	}
 	region = mmt_find_region_by_fd_offset(fd, offset * offset_unit);
+	VG_(message) (Vg_DebugMsg, "region found: %d\n", region != 0);
 	if (!region)
 		return 0;
 
@@ -412,6 +414,13 @@ void mmt_nv_dump_call(char * s, uint32_t mthd, char *in, uint32_t in_size){
         }
         break;
     }
+    case NVRM_MTHD_DEVICE_UNK00801701:{
+        struct nvrm_mthd_device_unk00801701 *x = in;
+        if(x->ptr){
+            dumpmem("UNK00801701 ptr ", (Addr)x->ptr, x->cnt * sizeof(uint8_t));
+        }
+        break;
+    }
     case NVRM_MTHD_DEVICE_UNK0080170d:{
         struct nvrm_mthd_device_unk0080170d *x = in;
         if(x->ptr1){
@@ -452,7 +461,7 @@ void mmt_nv_dump_call(char * s, uint32_t mthd, char *in, uint32_t in_size){
     }
     case NVRM_MTHD_SUBDEVICE_GET_FIFO_JOINABLE_ENGINES:{
         struct nvrm_mthd_subdevice_get_fifo_joinable_engines *x = in;
-        if(x->res){
+        if(x->res && x->cnt){
             dumpmem("SUBDEVICE_GET_FIFO_JOINABLE_ENGINES ptr ", (Addr)x->res, x->cnt * sizeof(uint32_t));
         }
         break;

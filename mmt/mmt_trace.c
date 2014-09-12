@@ -754,7 +754,7 @@ static void post_mmap(ThreadId tid, UWord *args, UInt nArgs, SysRes res, int off
 
 	if (mmt_nv_ioctl_post_mmap(args, res, offset_unit))
 		return;
-
+    VG_(message) (Vg_DebugMsg, "new mmap\n");
 	region = mmt_add_region(fd, start, start + len, offset * offset_unit, 0, 0, 0);
 
 	if (mmt_binary_output)

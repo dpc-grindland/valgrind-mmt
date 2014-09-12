@@ -78,10 +78,11 @@ struct nvrm_ioctl_create {
 	uint32_t parent;
 	uint32_t handle;
 	uint32_t cls;
-	uint64_t ptr;
+	uint64_t ptr;	/* in and out arguments */
 	uint32_t status;
 	uint32_t _pad;
 };
+/* For NV_DEVICE, constructor is GPU index as returned by LIST_DEVICES */
 #define NVRM_IOCTL_CREATE _IOWR(NVRM_IOCTL_MAGIC, 0x2b, struct nvrm_ioctl_create)
 
 /* used on dev fd */
@@ -117,10 +118,10 @@ struct nvrm_ioctl_memory {
 	uint64_t vram_free;
 	uint32_t vspace;
 	uint32_t handle;
-	uint32_t unk30;
+	uint32_t unk30;	// appears after allocating some buffers (f1=1d101), increases by the buffer size
 	uint32_t flags1;
 #define NVRM_IOCTL_MEMORY_FLAGS1_USER_HANDLE	0x00004000 /* otherwise 0xcaf..... allocated */
-	uint64_t unk38;
+	uint64_t unk38; // something about memory
 	uint32_t flags2;
 	uint32_t unk44;
 	uint64_t unk48;
@@ -143,11 +144,11 @@ struct nvrm_ioctl_unk4d {
 	uint32_t handle;
 	uint64_t unk08;
 	uint64_t unk10;
-	uint64_t slen;
-	uint64_t sptr;
+	uint64_t slen;	/* string length */
+	uint64_t sptr;	/* "RMEdgeIntrCheck" */
 	uint64_t unk28;
 	uint64_t unk30;
-	uint64_t unk38; /* out */
+	uint64_t unk38; /* out - observed to be 1 */
 	uint32_t status;
 	uint32_t _pad;
 };
@@ -162,7 +163,7 @@ struct nvrm_ioctl_host_map {
 	uint64_t limit;
 	uint64_t foffset;
 	uint32_t status;
-	uint32_t _pad2;
+	uint32_t _pad2; // in and equal to 1 sometimes?
 };
 #define NVRM_IOCTL_HOST_MAP _IOWR(NVRM_IOCTL_MAGIC, 0x4e, struct nvrm_ioctl_host_map)
 
@@ -199,6 +200,7 @@ struct nvrm_ioctl_vspace_map {
 	uint64_t base;
 	uint64_t size;
 	uint32_t flags;
+#define NVRM_IOCTL_VSPACE_MAP_USER_ADDR	0x8000	/* driver will assign the buffer to the provided addr (?) */
 	uint32_t unk24;
 	uint64_t addr;
 	uint32_t status;
@@ -238,7 +240,7 @@ struct nvrm_ioctl_unk5e {
 };
 #define NVRM_IOCTL_UNK5E _IOWR(NVRM_IOCTL_MAGIC, 0x5e, struct nvrm_ioctl_unk5e)
 
-#define NVRM_IOCTL_ESC_BASE 200
+#define NVRM_IOCTL_ESC_BASE 200 /* 0xc8 */
 
 struct nvrm_ioctl_card_info {
 	struct {
@@ -258,7 +260,7 @@ struct nvrm_ioctl_card_info {
 		uint64_t fb_size;
 	} card[32];
 };
-struct nvrm_ioctl_card_info2 {
+struct nvrm_ioctl_card_info2 { /* 331.62 follows this format */
 	struct {
 		uint32_t flags;
 		uint32_t domain;
@@ -314,12 +316,13 @@ struct nvrm_ioctl_check_version_str {
 #define NVRM_STATUS_ALREADY_EXISTS_SUB	5	/* like 6, but for subdevice-relative stuff */
 #define NVRM_STATUS_ALREADY_EXISTS	6	/* tried to create object for eg. device that already has one */
 #define NVRM_STATUS_INVALID_PARAM	8	/* NULL param to create, ... */
-#define NVRM_STATUS_INVALID_DEVICE	11	/* NVRM_CLASS_DEVICE devid out of range */
+#define NVRM_STATUS_INVALID_DEVICE	11	/* NVRM_CLASS_DEVICE devid out of range or object handle invalid */
 #define NVRM_STATUS_INVALID_MTHD	12	/* invalid mthd to call */
 #define NVRM_STATUS_OBJECT_ERROR	26	/* object model violation - wrong parent class, tried to create object with existing handle, nonexistent object, etc. */
-#define NVRM_STATUS_NO_HW		29	/* not supported on this card */
+#define NVRM_STATUS_NO_HW		29	/* not supported on this card. or invalid context */
 #define NVRM_STATUS_MTHD_SIZE_MISMATCH	32	/* invalid param size for a mthd */
 #define NVRM_STATUS_ADDRESS_FAULT	34	/* basically -EFAULT */
 #define NVRM_STATUS_MTHD_CLASS_MISMATCH	41	/* invalid mthd for given class */
+#define NVRM_STATUS_NOHANDLE	67	/* Invalid handle provided for new object */
 
 #endif
